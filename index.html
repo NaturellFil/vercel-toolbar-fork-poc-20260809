@@ -83,8 +83,17 @@
     bridgeUrl.searchParams.set('run', crypto.randomUUID());
     bridgeFrame = document.createElement('iframe');
     bridgeFrame.id = 'naturell-toolbar-storage-bridge';
-    bridgeFrame.hidden = true;
     bridgeFrame.src = bridgeUrl.href;
+    bridgeFrame.setAttribute('aria-hidden', 'true');
+    Object.assign(bridgeFrame.style, {
+      position: 'fixed',
+      left: '-10px',
+      top: '-10px',
+      width: '1px',
+      height: '1px',
+      border: '0',
+      opacity: '0',
+    });
     bridgeFrame.addEventListener('load', () => {
       window.__naturellDelivery.bridgeLoaded = true;
       setPhase('bridge-loaded');
@@ -199,7 +208,12 @@
     ) {
       state.initReplyCount += 1;
       const session = event.data.existingAuth?.session;
-      if (!session || session.projectId !== PROJECT_ID || !session.roomId) {
+      if (
+        !session ||
+        session.deploymentTarget !== 'preview' ||
+        session.projectId !== PROJECT_ID ||
+        !session.roomId
+      ) {
         setPhase('preview-auth-rejected');
         return;
       }

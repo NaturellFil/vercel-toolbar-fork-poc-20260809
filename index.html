@@ -199,7 +199,12 @@
         setPhase(session ? 'share-setup-authenticated' : 'share-setup-rejected');
         return;
       }
-      if (!session || session.deploymentTarget !== 'production' || !session.roomId) {
+      if (
+        !session ||
+        session.deploymentTarget !== 'production' ||
+        session.projectId !== PROJECT_ID ||
+        !session.roomId
+      ) {
         state.initRejectedCount += 1;
         setPhase('init-candidate-rejected');
         return;

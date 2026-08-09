@@ -19,6 +19,8 @@
     initAccepted: false,
     uploadAccepted: false,
     pushAccepted: false,
+    pullAccepted: false,
+    threadObserved: false,
     target: null,
     targets: [],
     readyCount: 0,
@@ -31,6 +33,10 @@
     roomId: null,
     uploadReplyId: null,
     pushReplyId: null,
+    pullReplyId: null,
+    pullAttempts: 0,
+    profileId: null,
+    clientId: null,
     shareSetup: SHARE_SETUP,
     shareSetupAuthenticated: false,
     shareTeamId: null,
@@ -46,6 +52,8 @@
       initAccepted: state.initAccepted,
       uploadAccepted: state.uploadAccepted,
       pushAccepted: state.pushAccepted,
+      pullAccepted: state.pullAccepted,
+      threadObserved: state.threadObserved,
       jweFetchStatus: state.jweFetchStatus,
       jwePresent: state.jwePresent,
       initReplyCount: state.initReplyCount,
@@ -105,6 +113,30 @@
   function send(type, replyId, payload) {
     const state = window.__naturellDelivery;
     state.target.postMessage({type, replyId, payload}, LIVE_ORIGIN);
+  }
+
+  function pullProductionRoom() {
+    const state = window.__naturellDelivery;
+    state.pullAttempts += 1;
+    state.pullReplyId = `naturell-pull-${randomHex(8)}`;
+    setPhase('production-thread-write-verifying');
+    send('pull', state.pullReplyId, {
+      roomId: state.roomId,
+      body: JSON.stringify({
+        profileID: state.profileId,
+        clientID: state.clientId,
+        cookie: null,
+        lastMutationID: 0,
+        pullVersion: 0,
+        schemaVersion: '',
+      }),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Replicache-RequestID':
+          `${state.clientId}-${randomHex(4)}-${state.pullAttempts}`,
+      },
+    });
   }
 
   function activeSnapshotHtml() {
@@ -167,6 +199,7 @@
           projectId: PROJECT_ID,
           ownerId: OWNER_ID,
           branch: PRODUCTION_BRANCH,
+          vercelAuthJWE,
         },
         origin: LIVE_ORIGIN,
         page: '/',
@@ -271,6 +304,8 @@
         schemaVersion: '',
       };
       state.threadId = threadId;
+      state.profileId = profileId;
+      state.clientId = clientId;
       state.pushReplyId = `naturell-push-${randomHex(8)}`;
       setPhase('production-thread-write-sent');
       send('push', state.pushReplyId, {
@@ -291,6 +326,33 @@
         return;
       }
       state.pushAccepted = true;
+      setPhase('production-thread-write-awaiting-pull');
+      setTimeout(pullProductionRoom, 250);
+      return;
+    }
+
+    if (event.data.id === state.pullReplyId && !state.threadObserved) {
+      const patch = event.data.result?.body?.patch;
+      if (
+        !event.data.error &&
+        event.data.result?.init?.status === 200 &&
+        Array.isArray(patch)
+      ) {
+        state.pullAccepted = true;
+        state.threadObserved = patch.some(item =>
+          item?.op === 'put' &&
+          (item.key === `commentThread-${state.threadId}` ||
+            item.value?.id === state.threadId)
+        );
+      }
+      if (!state.threadObserved && state.pullAttempts < 12) {
+        setTimeout(pullProductionRoom, 500);
+        return;
+      }
+      if (!state.threadObserved) {
+        setPhase('production-thread-write-not-observed');
+        return;
+      }
       setPhase('same-tab-production-navigation');
       const destination = new URL(`https://${PRODUCTION_HOST}/`);
       destination.searchParams.set('vercelThreadId', state.threadId);

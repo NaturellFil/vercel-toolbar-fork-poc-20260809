@@ -4,6 +4,9 @@
   const LIVE_ORIGIN = 'https://vercel.live';
   const PRODUCTION_HOST =
     'naturell-toolbar-fork-victim-20260809-h763y6e4f-testteam22-687d.vercel.app';
+  const PROJECT_ID = 'prj_eg3xiAzg9rqF1tLFbXOkCwpftLJO';
+  const OWNER_ID = 'team_qmp53qfzAPgwkguhRzHvSwgV';
+  const PRODUCTION_BRANCH = 'main';
   const DOM_MARKER = 'naturell_toolbar_git_preview_production_xss_20260809';
   const SOURCE_MARKER = 'naturell_git_preview_delivery_source_20260809';
   const SHARE_SETUP = new URLSearchParams(location.search).get('shareSetup') === '1';
@@ -21,6 +24,10 @@
     readyCount: 0,
     initReplyCount: 0,
     initRejectedCount: 0,
+    candidateSessionPresent: false,
+    candidateDeploymentTarget: null,
+    candidateProjectMatched: false,
+    candidateRoomPresent: false,
     roomId: null,
     uploadReplyId: null,
     pushReplyId: null,
@@ -29,9 +36,6 @@
     shareTeamId: null,
     jweFetchStatus: null,
     jwePresent: false,
-    productionWarmFrameLoaded: false,
-    productionToolbarFrameObserved: false,
-    productionWarmCompleted: false,
   };
 
   function recordSafeState() {
@@ -44,9 +48,12 @@
       pushAccepted: state.pushAccepted,
       jweFetchStatus: state.jweFetchStatus,
       jwePresent: state.jwePresent,
-      productionWarmFrameLoaded: state.productionWarmFrameLoaded,
-      productionToolbarFrameObserved: state.productionToolbarFrameObserved,
-      productionWarmCompleted: state.productionWarmCompleted,
+      initReplyCount: state.initReplyCount,
+      initRejectedCount: state.initRejectedCount,
+      candidateSessionPresent: state.candidateSessionPresent,
+      candidateDeploymentTarget: state.candidateDeploymentTarget,
+      candidateProjectMatched: state.candidateProjectMatched,
+      candidateRoomPresent: state.candidateRoomPresent,
     })}`;
   }
 
@@ -64,49 +71,6 @@
     script.dataset.explicitOptIn = 'true';
     script.src = 'https://vercel.live/_next-live/feedback/feedback.js';
     document.head.append(script);
-  }
-
-  function delay(milliseconds) {
-    return new Promise(resolve => setTimeout(resolve, milliseconds));
-  }
-
-  async function warmProductionPartition() {
-    setPhase('production-partition-warming');
-    const frame = document.createElement('iframe');
-    frame.setAttribute('aria-hidden', 'true');
-    frame.style.cssText =
-      'position:fixed;width:1px;height:1px;left:-10000px;top:-10000px;border:0';
-    const loaded = new Promise(resolve => {
-      const timeout = setTimeout(() => resolve(false), 15000);
-      frame.addEventListener('load', () => {
-        clearTimeout(timeout);
-        resolve(true);
-      }, {once: true});
-    });
-    frame.src = `https://${PRODUCTION_HOST}/?toolbarPartitionWarm=1`;
-    (document.body || document.documentElement).append(frame);
-    window.__naturellProductionWarmFrame = frame;
-    window.__naturellDelivery.productionWarmFrameLoaded = await loaded;
-
-    const deadline = performance.now() + 15000;
-    while (performance.now() < deadline) {
-      try {
-        if (frame.contentWindow && frame.contentWindow.frames.length > 0) {
-          window.__naturellDelivery.productionToolbarFrameObserved = true;
-          break;
-        }
-      } catch {}
-      await delay(100);
-    }
-    if (!window.__naturellDelivery.productionToolbarFrameObserved) {
-      setPhase('production-partition-warm-failed');
-      return false;
-    }
-
-    await delay(5000);
-    window.__naturellDelivery.productionWarmCompleted = true;
-    setPhase('production-partition-warmed');
-    return true;
   }
 
   async function prepareToolbar() {
@@ -127,7 +91,6 @@
         setPhase('jwe-unavailable');
         return;
       }
-      if (!await warmProductionPartition()) return;
     }
     setPhase('waiting-for-toolbar-ready');
     loadToolbar();
@@ -201,9 +164,9 @@
       event.source.postMessage({
         type: 'init',
         authOptions: {
-          hostname: PRODUCTION_HOST,
-          deploymentId: '',
-          path: '/',
+          projectId: PROJECT_ID,
+          ownerId: OWNER_ID,
+          branch: PRODUCTION_BRANCH,
         },
         origin: LIVE_ORIGIN,
         page: '/',
@@ -225,6 +188,10 @@
     ) {
       state.initReplyCount += 1;
       const session = event.data.existingAuth?.session;
+      state.candidateSessionPresent = Boolean(session);
+      state.candidateDeploymentTarget = session?.deploymentTarget || null;
+      state.candidateProjectMatched = session?.projectId === PROJECT_ID;
+      state.candidateRoomPresent = Boolean(session?.roomId);
       if (SHARE_SETUP) {
         state.shareSetupAuthenticated = Boolean(session);
         state.shareTeamId = session?.teamId || null;

